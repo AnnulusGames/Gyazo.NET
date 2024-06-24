@@ -12,6 +12,7 @@ namespace Gyazo;
 [JsonSerializable(typeof(DeleteImageRequest))]
 [JsonSerializable(typeof(DeleteImageResponse))]
 [JsonSerializable(typeof(UserResponse))]
+[JsonSerializable(typeof(ErrorResponse))]
 public sealed partial class GyazoJsonSerializerContext : JsonSerializerContext
 {
 }
