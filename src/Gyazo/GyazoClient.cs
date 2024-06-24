@@ -1,3 +1,5 @@
+using System.Net.Http.Json;
+
 namespace Gyazo;
 
 public interface IGyazoClient
@@ -50,10 +52,24 @@ public sealed partial class GyazoClient : IGyazoClient, IDisposable
 
     async static Task<GyazoApiException> CreateApiException(HttpResponseMessage response, bool configureAwait, CancellationToken cancellationToken)
     {
+        var contentType = response.Content.Headers.ContentType;
+        var mediaType = contentType?.MediaType;
+        if (mediaType != null && mediaType!.Equals("application/json", StringComparison.OrdinalIgnoreCase))
+        {
 #if NET6_0_OR_GREATER
-        return new GyazoApiException(response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(configureAwait));
+            var result = await response.Content.ReadFromJsonAsync<ErrorResponse>(GyazoJsonSerializerContext.Default.Options, cancellationToken)
+                .ConfigureAwait(configureAwait);
 #else
-        return new GyazoApiException(response.StatusCode, await response.Content.ReadAsStringAsync().ConfigureAwait(configureAwait));
+            var result = JsonSerializer.Deserialize<ErrorResponse>(await response.Content.ReadAsByteArrayAsync().ConfigureAwait(configureAwait), GyazoJsonSerializerContext.Default.Options);
+#endif
+
+            return new GyazoApiException((ErrorCode)response.StatusCode, result!.Message);
+        }
+        
+#if NET6_0_OR_GREATER
+        return new GyazoApiException((ErrorCode)response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(configureAwait));
+#else
+        return new GyazoApiException((ErrorCode)response.StatusCode, await response.Content.ReadAsStringAsync().ConfigureAwait(configureAwait));
 #endif
     }
 
